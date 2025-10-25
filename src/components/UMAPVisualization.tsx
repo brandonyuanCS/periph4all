@@ -59,7 +59,7 @@ export function UMAPVisualization({ preferences }: UMAPVisualizationProps) {
     fetchVisualizationData();
   }, [preferences]);
 
-  const CustomTooltip = ({ active, payload }: any) => {
+  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: EmbeddingPoint }> }) => {
     if (active && payload && payload.length) {
       const point = payload[0].payload;
       const isUser = point.mouse_name === "Your Preferences";
@@ -116,6 +116,15 @@ export function UMAPVisualization({ preferences }: UMAPVisualizationProps) {
   return (
     <Card className="glass border-border/50 p-6">
       <div className="space-y-4">
+        {/* Technical Explanation */}
+        <div className="text-center space-y-2 pb-2 border-b border-border/30">
+          <p className="text-sm text-muted-foreground leading-relaxed max-w-4xl mx-auto">
+            Each mouse is encoded into a <span className="text-primary font-semibold">384-dimensional vector</span> using the <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">all-MiniLM-L6-v2</span> transformer model. 
+            <b className="text-foreground"> UMAP (Uniform Manifold Approximation and Projection)</b> reduces these high-dimensional embeddings to 2D while preserving local similarity structure. 
+            Points closer together represent mice with more similar features and specifications.
+          </p>
+        </div>
+        
         {/* Legend */}
         <div className="flex items-center justify-center gap-6 flex-wrap">
           <div className="flex items-center gap-2">

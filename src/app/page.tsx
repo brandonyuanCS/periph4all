@@ -39,8 +39,8 @@ export default function Home() {
                     periph4all
                   </h1>
                 </div>
-                <p className="text-xl md:text-2xl text-muted-foreground max-w-lg leading-relaxed">
-                  Find your perfect gaming mouse in <span className="text-primary font-semibold">60 seconds</span> with <b>LLMs</b> leveraging <b>transformer-based embeddings</b>
+                <p className="text-lg md:text-xl text-muted-foreground max-w-lg leading-relaxed">
+                  Find your perfect gaming mouse in <span className="text-primary font-semibold">60 seconds</span> using <b>conversational AI</b> and <b>transformers-based semantic embeddings</b>. Compare matches and explore their relationships through <b>cosine similarity</b> and <b>UMAP visualization</b>.
                 </p>
               </div>
 
@@ -161,12 +161,16 @@ export default function Home() {
             <CardContent className="relative">
               <div className="flex flex-wrap gap-3">
                 <Badge variant="secondary" className="text-sm py-1.5 px-3 hover:bg-primary hover:text-primary-foreground transition-colors cursor-default">Next.js 16</Badge>
+                <Badge variant="secondary" className="text-sm py-1.5 px-3 hover:bg-primary hover:text-primary-foreground transition-colors cursor-default">React 19</Badge>
+                <Badge variant="secondary" className="text-sm py-1.5 px-3 hover:bg-primary hover:text-primary-foreground transition-colors cursor-default">TypeScript</Badge>
                 <Badge variant="secondary" className="text-sm py-1.5 px-3 hover:bg-primary hover:text-primary-foreground transition-colors cursor-default">FastAPI</Badge>
-                <Badge variant="secondary" className="text-sm py-1.5 px-3 hover:bg-primary hover:text-primary-foreground transition-colors cursor-default">OpenAI Embeddings</Badge>
-                <Badge variant="secondary" className="text-sm py-1.5 px-3 hover:bg-primary hover:text-primary-foreground transition-colors cursor-default">Vector Similarity</Badge>
-                <Badge variant="secondary" className="text-sm py-1.5 px-3 hover:bg-primary hover:text-primary-foreground transition-colors cursor-default">UMAP</Badge>
-                <Badge variant="secondary" className="text-sm py-1.5 px-3 hover:bg-primary hover:text-primary-foreground transition-colors cursor-default">Plotly.js</Badge>
-                <Badge variant="secondary" className="text-sm py-1.5 px-3 hover:bg-primary hover:text-primary-foreground transition-colors cursor-default">Tailwind CSS</Badge>
+                <Badge variant="secondary" className="text-sm py-1.5 px-3 hover:bg-primary hover:text-primary-foreground transition-colors cursor-default">Sentence-Transformers</Badge>
+                <Badge variant="secondary" className="text-sm py-1.5 px-3 hover:bg-primary hover:text-primary-foreground transition-colors cursor-default">UMAP-learn</Badge>
+                <Badge variant="secondary" className="text-sm py-1.5 px-3 hover:bg-primary hover:text-primary-foreground transition-colors cursor-default">Groq LLM</Badge>
+                <Badge variant="secondary" className="text-sm py-1.5 px-3 hover:bg-primary hover:text-primary-foreground transition-colors cursor-default">Recharts</Badge>
+                <Badge variant="secondary" className="text-sm py-1.5 px-3 hover:bg-primary hover:text-primary-foreground transition-colors cursor-default">Force Graph 2D</Badge>
+                <Badge variant="secondary" className="text-sm py-1.5 px-3 hover:bg-primary hover:text-primary-foreground transition-colors cursor-default">scikit-learn</Badge>
+                <Badge variant="secondary" className="text-sm py-1.5 px-3 hover:bg-primary hover:text-primary-foreground transition-colors cursor-default">Tailwind CSS 4</Badge>
                 <Badge variant="secondary" className="text-sm py-1.5 px-3 hover:bg-primary hover:text-primary-foreground transition-colors cursor-default">shadcn/ui</Badge>
               </div>
             </CardContent>

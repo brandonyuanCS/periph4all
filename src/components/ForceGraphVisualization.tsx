@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -46,15 +46,14 @@ export function ForceGraphVisualization({ preferences }: ForceGraphVisualization
   const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] });
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
   const [kNeighbors, setKNeighbors] = useState(5);
-  const [showLabels, setShowLabels] = useState(false);
 
-  const colors = {
+  const colors = useMemo(() => ({
     foreground: 'rgba(250, 250, 250, 0.4)',
     recommended: 'rgb(34, 197, 94)',
     user: 'rgb(234, 179, 8)',
     link: 'rgba(100, 100, 100, 0.2)',
     userLink: 'rgba(234, 179, 8, 0.6)'
-  };
+  }), []);
 
   useEffect(() => {
     const fetchGraphData = async () => {
@@ -134,12 +133,14 @@ export function ForceGraphVisualization({ preferences }: ForceGraphVisualization
     };
 
     fetchGraphData();
-  }, [preferences, kNeighbors]);
+  }, [preferences, kNeighbors, colors]);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleNodeHover = useCallback((node: any) => {
     setHoveredNode(node as GraphNode | null);
   }, []);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const paintNode = useCallback((node: any, ctx: CanvasRenderingContext2D) => {
     const size = node.val;
     
@@ -161,8 +162,8 @@ export function ForceGraphVisualization({ preferences }: ForceGraphVisualization
       }
     }
 
-    // Draw label on hover or if showLabels is true
-    if ((hoveredNode && hoveredNode.id === node.id) || (showLabels && (node.isRecommended || node.isUser))) {
+    // Draw label on hover
+    if (hoveredNode && hoveredNode.id === node.id) {
       ctx.font = '12px Sans-Serif';
       ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
       ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
@@ -175,8 +176,9 @@ export function ForceGraphVisualization({ preferences }: ForceGraphVisualization
       ctx.strokeText(text, textX, textY);
       ctx.fillText(text, textX, textY);
     }
-  }, [hoveredNode, showLabels]);
+  }, [hoveredNode]);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const paintLink = useCallback((link: any, ctx: CanvasRenderingContext2D) => {
     const { source, target } = link;
     if (typeof source !== 'object' || typeof target !== 'object') return;
@@ -260,6 +262,15 @@ export function ForceGraphVisualization({ preferences }: ForceGraphVisualization
   return (
     <Card className="glass border-border/50 p-6">
       <div className="space-y-4">
+        {/* Technical Explanation */}
+        <div className="text-center space-y-2 pb-2 border-b border-border/30">
+          <p className="text-sm text-muted-foreground leading-relaxed max-w-4xl mx-auto">
+            This <b className="text-foreground">force-directed graph</b> visualizes the similarity network between mice. 
+            Each node represents a mouse, and edges connect the <span className="text-primary font-semibold">k most similar neighbors</span> based on <b className="text-foreground">cosine similarity</b> in embedding space. 
+            The physics simulation naturally clusters similar mice together. Yellow connections show your preferences&apos; closest matches.
+          </p>
+        </div>
+
         {/* Controls */}
         <div className="flex items-center justify-between flex-wrap gap-4">
           {/* Legend */}
