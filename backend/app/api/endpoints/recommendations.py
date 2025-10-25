@@ -54,7 +54,7 @@ async def get_quick_recommendations(
         recommendations = await recommender.recommend(
             preferences=preferences,
             top_k=3,
-            include_reasoning=False
+            include_reasoning=True  # Enable reasoning for better UX
         )
         
         return RecommendationResponse(

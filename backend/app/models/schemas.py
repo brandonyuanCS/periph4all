@@ -31,9 +31,9 @@ class Genre(str, Enum):
 # User Preferences
 class UserPreferences(BaseModel):
     """User preferences for mouse recommendation"""
-    hand_size: Optional[HandSize] = None
-    grip_type: Optional[GripType] = None
-    genre: Optional[Genre] = None
+    hand_size: Optional[str] = Field(None, description="Hand size: exact dimensions (e.g., '19cm x 10cm') or small/medium/large")
+    grip_type: Optional[str] = Field(None, description="palm, claw, fingertip, or hybrid")
+    genre: Optional[str] = Field(None, description="fps, moba, mmo, battle_royale, or general")
     sensitivity: Optional[str] = Field(None, description="low, medium, high")
     budget_min: Optional[float] = Field(None, ge=0)
     budget_max: Optional[float] = Field(None, ge=0)
@@ -61,7 +61,7 @@ class MouseInfo(BaseModel):
 class MouseRecommendation(BaseModel):
     """Single mouse recommendation with similarity score"""
     mouse: MouseInfo
-    similarity_score: float = Field(..., ge=0, le=1)
+    score: float = Field(..., ge=0, le=1, description="Similarity/match score")
     reasoning: Optional[str] = None
 
 

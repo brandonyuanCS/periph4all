@@ -33,6 +33,11 @@ ENV/
 data/cache/*.npy
 data/cache/*.json
 
+# Embeddings (regenerated files)
+data/FINAL_EMBEDDINGS.npy
+data/FINAL_EMBEDDINGS_meta.json
+data/FINAL_EMBEDDINGS_texts.json
+
 # IDE
 .vscode/
 .idea/

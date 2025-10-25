@@ -192,21 +192,21 @@ def generate_embeddings(df: pd.DataFrame, model_name: str, batch_size: int = 32)
 
 
 def save_embeddings(embeddings: np.ndarray, df: pd.DataFrame, model_name: str, 
-                   cache_dir: Path):
+                   data_dir: Path):
     """
-    Save embeddings and metadata to cache directory
+    Save embeddings and metadata to data directory
     
     Args:
         embeddings: numpy array of embeddings
         df: DataFrame with mouse data (for validation)
         model_name: Model name used
-        cache_dir: Directory to save cache files
+        data_dir: Directory to save files (backend/data/)
     """
-    # Ensure cache directory exists
-    cache_dir.mkdir(parents=True, exist_ok=True)
+    # Ensure data directory exists
+    data_dir.mkdir(parents=True, exist_ok=True)
     
     # Save embeddings as numpy array
-    embeddings_file = cache_dir / "mouse_embeddings.npy"
+    embeddings_file = data_dir / "FINAL_EMBEDDINGS.npy"
     print(f"\nSaving embeddings to: {embeddings_file}")
     np.save(embeddings_file, embeddings)
     
@@ -220,13 +220,13 @@ def save_embeddings(embeddings: np.ndarray, df: pd.DataFrame, model_name: str,
         'dataset_columns': list(df.columns)
     }
     
-    meta_file = cache_dir / "mouse_embeddings_meta.json"
+    meta_file = data_dir / "FINAL_EMBEDDINGS_meta.json"
     print(f"Saving metadata to: {meta_file}")
     with open(meta_file, 'w') as f:
         json.dump(metadata, f, indent=2)
     
     # Optionally save text representations for debugging
-    texts_file = cache_dir / "mouse_texts.json"
+    texts_file = data_dir / "FINAL_EMBEDDINGS_texts.json"
     print(f"Saving text representations to: {texts_file}")
     texts = [mouse_to_text(row.to_dict()) for _, row in df.iterrows()]
     with open(texts_file, 'w') as f:
@@ -273,8 +273,8 @@ def main():
     print("=" * 60)
     
     # Check if embeddings already exist
-    embeddings_file = settings.CACHE_DIR / "mouse_embeddings.npy"
-    meta_file = settings.CACHE_DIR / "mouse_embeddings_meta.json"
+    embeddings_file = settings.DATA_DIR / "FINAL_EMBEDDINGS.npy"
+    meta_file = settings.DATA_DIR / "FINAL_EMBEDDINGS_meta.json"
     
     if embeddings_file.exists() and meta_file.exists() and not args.force:
         print("\n⚠️  Embeddings already exist!")
@@ -304,7 +304,7 @@ def main():
         embeddings = generate_embeddings(df, args.model, args.batch_size)
         
         # Save results
-        save_embeddings(embeddings, df, args.model, settings.CACHE_DIR)
+        save_embeddings(embeddings, df, args.model, settings.DATA_DIR)
         
         print("\n" + "=" * 60)
         print("✅ Embedding generation complete!")
@@ -312,7 +312,7 @@ def main():
         print(f"\nGenerated {len(embeddings)} embeddings")
         print(f"Embedding dimension: {embeddings.shape[1]}")
         print(f"Model used: {args.model}")
-        print(f"\nCache directory: {settings.CACHE_DIR}")
+        print(f"\nData directory: {settings.DATA_DIR}")
         
     except Exception as e:
         print(f"\n❌ Error: {e}")

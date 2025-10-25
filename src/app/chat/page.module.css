@@ -120,7 +120,21 @@
   height: 0.5rem;
   width: 0.5rem;
   border-radius: 9999px;
+  background-color: hsl(var(--color-muted));
+}
+
+.infoDotActive {
   background-color: hsl(var(--color-primary));
+  box-shadow: 0 0 10px hsl(var(--color-primary) / 0.5);
+}
+
+.recommendationCard {
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.recommendationCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 30px hsl(var(--color-primary) / 0.2);
 }
 
 @keyframes bounce {

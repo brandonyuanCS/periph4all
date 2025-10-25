@@ -23,9 +23,9 @@ from app.core.config import settings
 
 
 def load_embeddings():
-    """Load embeddings and metadata from cache"""
-    embeddings_file = settings.CACHE_DIR / "mouse_embeddings.npy"
-    meta_file = settings.CACHE_DIR / "mouse_embeddings_meta.json"
+    """Load embeddings and metadata from data directory"""
+    embeddings_file = settings.DATA_DIR / "FINAL_EMBEDDINGS.npy"
+    meta_file = settings.DATA_DIR / "FINAL_EMBEDDINGS_meta.json"
     
     if not embeddings_file.exists():
         raise FileNotFoundError(
@@ -106,32 +106,73 @@ def test_similarity_search(embeddings, metadata):
         print("⚠️  No mouse names in metadata, skipping similarity test")
         return
     
+    # Load the dataset to get prices
+    df = pd.read_csv(settings.DATASET_PATH)
+    
     # Load the model
     print(f"\nLoading model: {metadata['model']}")
     model = SentenceTransformer(metadata['model'])
     
     # Test queries
     test_queries = [
-        "lightweight wireless mouse for FPS gaming",
-        "heavy ergonomic mouse with many buttons for MMO",
-        "small compact mouse for claw grip",
-        "budget-friendly mouse under 50 dollars",
-        "I want a Razer Viper Mini Signature Edition"
+        ("lightweight wireless mouse for FPS gaming", None, None),
+        ("heavy ergonomic mouse with many buttons for MMO", None, None),
+        ("small compact mouse for claw grip", None, None),
+        ("budget-friendly mouse under 50 dollars", None, 50),  # Budget filter!
+        ("premium mouse under 100 dollars", None, 100),  # Budget filter!
     ]
     
-    for query in test_queries:
+    for query_data in test_queries:
+        if isinstance(query_data, tuple):
+            query, budget_min, budget_max = query_data
+        else:
+            query = query_data
+            budget_min, budget_max = None, None
+        
         print(f"\n🔍 Query: '{query}'")
+        if budget_max:
+            print(f"   Budget filter: ≤ ${budget_max}")
         print("-" * 60)
         
         # Generate query embedding
         query_emb = model.encode(query, normalize_embeddings=True)
         
-        # Find similar mice
-        similar = find_similar_mice(query_emb, embeddings, mouse_names, top_k=3)
+        # Apply budget filter if specified
+        if budget_min is not None or budget_max is not None:
+            valid_indices = []
+            for i, row in df.iterrows():
+                price = row.get('Price')
+                if pd.isna(price):
+                    continue
+                if budget_min is not None and price < budget_min:
+                    continue
+                if budget_max is not None and price > budget_max:
+                    continue
+                valid_indices.append(i)
+            
+            if not valid_indices:
+                print("  ❌ No mice found within budget!")
+                continue
+            
+            # Filter embeddings and names
+            filtered_embeddings = embeddings[valid_indices]
+            filtered_names = [mouse_names[i] for i in valid_indices]
+            
+            print(f"  Filtered to {len(valid_indices)} mice within budget")
+            
+            # Find similar mice from filtered set
+            similar = find_similar_mice(query_emb, filtered_embeddings, filtered_names, top_k=3)
+        else:
+            # No filter - search all mice
+            similar = find_similar_mice(query_emb, embeddings, mouse_names, top_k=3)
         
         print("Top 3 matches:")
         for rank, (idx, name, score) in enumerate(similar, 1):
-            print(f"  {rank}. {name}")
+            # Get price for display
+            mouse_row = df[df['Name'] == name].iloc[0] if len(df[df['Name'] == name]) > 0 else None
+            price_str = f" - ${mouse_row['Price']:.2f}" if mouse_row is not None and pd.notna(mouse_row['Price']) else ""
+            
+            print(f"  {rank}. {name}{price_str}")
             print(f"     Similarity: {score:.4f}")
 
 

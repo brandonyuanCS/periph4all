@@ -130,8 +130,8 @@ class EmbeddingService:
         
         Caches results to avoid recomputation
         """
-        cache_file = settings.CACHE_DIR / "mouse_embeddings.npy"
-        cache_meta_file = settings.CACHE_DIR / "mouse_embeddings_meta.json"
+        cache_file = settings.DATA_DIR / "FINAL_EMBEDDINGS.npy"
+        cache_meta_file = settings.DATA_DIR / "FINAL_EMBEDDINGS_meta.json"
         
         # Try to load from cache
         if not force_regenerate and cache_file.exists() and cache_meta_file.exists():

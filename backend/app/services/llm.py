@@ -1,8 +1,8 @@
 """
 LLM Service
-Handles conversation and preference extraction using OpenAI API
+Handles conversation and preference extraction using Groq API
 """
-import openai
+from groq import Groq
 import json
 from typing import List, Optional
 from app.models.schemas import ChatMessage, ChatResponse, UserPreferences
@@ -18,28 +18,41 @@ class LLMService:
         self._initialize_client()
     
     def _initialize_client(self):
-        """Initialize OpenAI client if API key is available"""
-        if settings.OPENAI_API_KEY:
-            openai.api_key = settings.OPENAI_API_KEY
-            self.client = openai
+        """Initialize Groq client if API key is available"""
+        if settings.GROQ_API_KEY:
+            self.client = Groq(api_key=settings.GROQ_API_KEY)
+            print(f"Groq client initialized with model: {settings.GROQ_MODEL}")
         else:
-            print("Warning: OPENAI_API_KEY not set. LLM features will use fallback responses.")
+            print("Warning: GROQ_API_KEY not set. LLM features will use fallback responses.")
     
     async def process_chat(self, messages: List[ChatMessage], 
                           current_preferences: Optional[UserPreferences] = None) -> ChatResponse:
         """
         Process chat message and extract/update user preferences
         
-        If OpenAI API is not configured, uses rule-based fallback
+        If Groq API is not configured, uses rule-based fallback
         """
-        if self.client and settings.OPENAI_API_KEY:
+        if self.client and settings.GROQ_API_KEY:
             return await self._process_chat_with_llm(messages, current_preferences)
         else:
             return await self._process_chat_fallback(messages, current_preferences)
     
     async def _process_chat_with_llm(self, messages: List[ChatMessage],
                                     current_preferences: Optional[UserPreferences]) -> ChatResponse:
-        """Process chat using OpenAI LLM"""
+        """Process chat using Groq LLM"""
+        
+        # Define preference lists and maps once for use in prompt and programmatic fix
+        required_prefs = ['hand_size', 'grip_type', 'genre', 'sensitivity', 'budget_min', 'budget_max', 'weight_preference', 'wireless_preference']
+        question_map = {
+            'hand_size': "What's your hand size? (e.g., 19cm x 10cm or small/medium/large)",
+            'grip_type': "What's your preferred grip type? (palm, claw, fingertip, or hybrid)",
+            'genre': "What games do you mainly play? (fps, moba, mmo, battle_royale, or general)",
+            'sensitivity': "What's your preferred mouse sensitivity? (low, medium, or high)",
+            'budget_min': "What's your budget range for a gaming mouse? (e.g., $50 to $100)",
+            'budget_max': "What's your budget range for a gaming mouse? (e.g., $50 to $100)",
+            'weight_preference': "Is your preferred mouse weight light (<65g), medium (65-85g), or heavy (>85g)?",
+            'wireless_preference': "Do you prefer wired or wireless connection?"
+        }
         
         try:
             # Build message history
@@ -47,19 +60,32 @@ class LLMService:
             
             # Add context about current preferences if available
             if current_preferences:
-                pref_summary = f"Current user preferences: {current_preferences.model_dump_json()}"
-                chat_messages.append({"role": "system", "content": pref_summary})
+                collected = current_preferences.model_dump(exclude_none=True)
+                if collected:
+                    pref_list = "\n".join([f"- {key}: {value}" for key, value in collected.items()])
+                    
+                    # Determine what to ask next
+                    missing = [p for p in required_prefs if p not in collected or collected[p] is None]
+                    
+                    next_question_hint = ""
+                    if missing:
+                        next_pref = missing[0]
+                        next_question_hint = f"\n\nNEXT QUESTION TO ASK: {question_map.get(next_pref, 'Continue asking about preferences')}"
+                    
+                    pref_summary = f"ALREADY COLLECTED PREFERENCES (DO NOT change or override these):\n{pref_list}\n\nOnly ask about preferences that are NOT listed above.{next_question_hint}"
+                    chat_messages.append({"role": "system", "content": pref_summary})
             
             # Add conversation history
             for msg in messages:
                 chat_messages.append({"role": msg.role, "content": msg.content})
             
-            # Call OpenAI API
-            response = await openai.ChatCompletion.acreate(
-                model=settings.OPENAI_MODEL,
+            # Call Groq API
+            response = self.client.chat.completions.create(
+                model=settings.GROQ_MODEL,
                 messages=chat_messages,
-                temperature=0.7,
-                max_tokens=500
+                temperature=0.5,  # Lower temperature for more consistent behavior
+                max_tokens=500,
+                response_format={"type": "json_object"}  # Enforce JSON output
             )
             
             # Parse response
@@ -71,8 +97,51 @@ class LLMService:
             prefs_dict = parsed.get("preferences", {})
             ready = parsed.get("ready_for_recommendation", False)
             
-            # Create UserPreferences object
-            updated_prefs = UserPreferences(**prefs_dict) if prefs_dict else current_preferences
+            # --- START FIX: Programmatic enforcement of next question ---
+            # Calculate updated 'missing' list based on the new LLM output
+            all_prefs = {}
+            if current_preferences:
+                all_prefs.update(current_preferences.model_dump(exclude_none=True))
+            # New preferences from LLM response
+            all_prefs.update({k: v for k, v in prefs_dict.items() if v is not None}) 
+            
+            missing_after_update = [p for p in required_prefs if all_prefs.get(p) is None]
+
+            if not ready and missing_after_update:
+                next_pref = missing_after_update[0]
+                next_question = question_map.get(next_pref)
+                
+                # Enforce question: if we're not ready and the LLM response doesn't contain '?'
+                if next_question and '?' not in message_text:
+                    
+                    # Ensure a clean separation
+                    separator = " "
+                    message_text_stripped = message_text.strip()
+                    if message_text_stripped:
+                        last_char = message_text_stripped[-1]
+                        if last_char not in ['.', '!', '?']:
+                            separator = "! " # Add an exclamation and space for flow
+                        elif last_char == '.':
+                            separator = " "
+                        
+                        message_text = f"{message_text_stripped}{separator}{next_question}"
+                    else:
+                        # Fallback if the LLM returned an empty message but provided prefs
+                        message_text = next_question
+            
+            # --- END FIX ---
+
+            # Create UserPreferences object, merging with current preferences
+            if current_preferences:
+                # Start with current preferences
+                updated_prefs_dict = current_preferences.model_dump(exclude_none=True)
+                # Update with new values from LLM (only non-null values)
+                for key, value in prefs_dict.items():
+                    if value is not None:
+                        updated_prefs_dict[key] = value
+                updated_prefs = UserPreferences(**updated_prefs_dict)
+            else:
+                updated_prefs = UserPreferences(**prefs_dict) if prefs_dict else None
             
             return ChatResponse(
                 message=ChatMessage(role="assistant", content=message_text),
@@ -81,7 +150,9 @@ class LLMService:
             )
             
         except Exception as e:
-            print(f"LLM API error: {e}")
+            print(f"Groq API error: {e}")
+            import traceback
+            traceback.print_exc()
             # Fallback to rule-based on error
             return await self._process_chat_fallback(messages, current_preferences)
     

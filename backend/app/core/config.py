@@ -32,9 +32,9 @@ class Settings(BaseSettings):
     EMBEDDING_DIMENSION: int = 384  # Default for all-MiniLM-L6-v2
     TOP_K_RECOMMENDATIONS: int = 3
     
-    # OpenAI Settings (optional)
-    OPENAI_API_KEY: str = ""
-    OPENAI_MODEL: str = "gpt-3.5-turbo"
+    # Groq Settings
+    GROQ_API_KEY: str = ""
+    GROQ_MODEL: str = "llama-3.1-70b-versatile"  # or mixtral-8x7b-32768
     
     # UMAP Settings
     UMAP_N_NEIGHBORS: int = 15
@@ -42,8 +42,10 @@ class Settings(BaseSettings):
     UMAP_N_COMPONENTS: int = 2
     
     class Config:
-        env_file = ".env"
+        env_file = "../.env"  # Look for .env in project root
+        env_file_encoding = 'utf-8'
         case_sensitive = True
+        extra = "ignore"  # Ignore extra fields in .env that aren't defined in Settings
 
 
 settings = Settings()
