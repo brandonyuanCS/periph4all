@@ -123,3 +123,16 @@ class StatusResponse(BaseModel):
     message: str
     data: Optional[Dict[str, Any]] = None
 
+# visualization stuff
+class GraphEdge(BaseModel):
+    """Similarity edge between two mice or user and a mouse"""
+    source: str  # e.g., 'mouse-1' (original index) or 'user-preference'
+    target: str  # e.g., 'mouse-2' (original index)
+    similarity: float = Field(..., ge=0, le=1)
+
+class ForceGraphResponse(BaseModel):
+    """Response model for ForceGraph visualization, matching frontend expectation."""
+    visualization: VisualizationResponse
+    edges: List[GraphEdge] = Field(..., description="Edges between mouse nodes (similarity links)")
+    user_edges: Optional[List[GraphEdge]] = Field(None, description="Edges between user node and mice")
+

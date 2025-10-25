@@ -1,21 +1,52 @@
+# backend/app/services/recommender.py
 """
 Recommender Service
 Core recommendation logic using embeddings and similarity
 """
 import numpy as np
 import umap
-from typing import List, Optional
+from typing import List, Optional, Tuple, Any
 from app.models.schemas import (
     UserPreferences,
     MouseRecommendation,
     MouseInfo,
     VisualizationResponse,
-    EmbeddingPoint
+    EmbeddingPoint,
+    # Assuming these new models are added to schemas.py
+    # GraphEdge,
+    # ForceGraphResponse
 )
 from app.services.data_loader import DataLoader
 from app.services.embeddings import EmbeddingService
 from app.utils.similarity import cosine_similarity, top_k_similar
 from app.core.config import settings
+import pandas as pd
+
+
+# Helper function: Assumes top_k_similar_for_all is available in app.utils.similarity
+# It should return indices and scores for the top K neighbors for every row in the embeddings matrix.
+# Since app.utils.similarity is not provided, we will implement the logic here for context.
+def _calculate_all_mouse_edges(embeddings: np.ndarray, k: int) -> List[Tuple[int, int, float]]:
+    """Calculates the top K similarity edges for every mouse."""
+    similarity_matrix = cosine_similarity(embeddings, embeddings)
+    edges = []
+    
+    # Iterate through all mice (source nodes)
+    for i in range(len(similarity_matrix)):
+        # Get similarities for the current mouse (row i)
+        row_similarities = similarity_matrix[i]
+        
+        # Sort indices by similarity in descending order
+        # We exclude the mouse itself (similarity 1.0)
+        top_indices = np.argsort(row_similarities)[::-1][1:k+1] 
+        
+        for target_idx in top_indices:
+            # We enforce a directional edge from lower index to higher index to avoid duplicates (i -> target_idx)
+            # This is a common practice for undirected graphs in force simulations
+            if i < target_idx:
+                edges.append((i, target_idx, row_similarities[target_idx]))
+                
+    return edges
 
 
 class RecommenderService:
@@ -43,6 +74,7 @@ class RecommenderService:
         1. Price (budget_min, budget_max)
         2. Connectivity (wireless_preference)
         """
+        # ... (rest of _apply_hard_filters logic remains unchanged)
         mice = self.data_loader.get_mice_list()
         valid_indices = []
         
@@ -101,20 +133,14 @@ class RecommenderService:
         
         print(f"[HARD FILTERS] {len(valid_indices)} mice passed, {filtered_count} filtered out (total: {len(mice)})")
         return np.array(valid_indices) if valid_indices else None
-    
+
+
     async def recommend(self, preferences: UserPreferences, top_k: int = 3,
                        include_reasoning: bool = True) -> List[MouseRecommendation]:
         """
         Generate top K mouse recommendations
-        
-        Args:
-            preferences: User preferences
-            top_k: Number of recommendations to return
-            include_reasoning: Whether to generate reasoning (requires LLM)
-        
-        Returns:
-            List of mouse recommendations with similarity scores
         """
+        # ... (recommend logic remains unchanged)
         # Generate user embedding
         user_embedding = self.embedding_service.generate_user_embedding(preferences)
         
@@ -186,6 +212,7 @@ class RecommenderService:
     def _generate_reasoning(self, mouse_data: dict, preferences: UserPreferences, 
                           score: float) -> str:
         """Generate simple rule-based reasoning for recommendation"""
+        # ... (_generate_reasoning logic remains unchanged)
         reasons = []
         
         # Check weight preference (CSV column: "Weight (grams)")
@@ -220,9 +247,11 @@ class RecommenderService:
         reasons.append(f"High compatibility score: {score:.1%}")
         
         return ". ".join(reasons) if reasons else "Good match based on your overall preferences"
+
     
     async def get_visualization_data(self, include_user_point: bool = False) -> VisualizationResponse:
         """Get 2D embedding visualization of all mice"""
+        # ... (get_visualization_data logic remains unchanged)
         mouse_embeddings = self._get_mouse_embeddings()
         
         # Apply UMAP for dimensionality reduction
@@ -241,10 +270,16 @@ class RecommenderService:
         
         for i, (x, y) in enumerate(self._reduced_embeddings):
             mouse_data = mice[i]
+            
+            # Helper function to handle NaN values from recommend method is not needed here, 
+            # as only name is required for visualization point.
+            
+            # NOTE: ForceGraphVisualization uses 'mouse-' prefix for IDs and 'mouse_name' for name.
+            # We must map the name to index for the graph component.
             mouse_points.append(EmbeddingPoint(
                 x=float(x),
                 y=float(y),
-                mouse_name=mouse_data.get('Name', 'Unknown')  # Use 'Name' (capitalized) to match CSV
+                mouse_name=mouse_data.get('Name', 'Unknown') # Changed from 'name' to 'Name' to match CSV header
             ))
         
         return VisualizationResponse(
@@ -252,7 +287,11 @@ class RecommenderService:
             user_point=None,
             recommended_points=None
         )
-    
+
+    # ----------------------------------------------------------------------
+    # CRITICAL NEW METHOD: Force Graph Data Calculation
+    # ----------------------------------------------------------------------
+
     async def get_visualization_with_user(self, preferences: UserPreferences) -> VisualizationResponse:
         """Get visualization including user preference point and recommendations"""
         # Get base visualization
@@ -280,7 +319,7 @@ class RecommenderService:
             for rec in recommendations:
                 # Find index of this mouse
                 for i, mouse in enumerate(mice):
-                    if mouse.get('Name') == rec.mouse.name:  # Use 'Name' (capitalized) to match CSV
+                    if mouse.get('Name') == rec.mouse.name:
                         x, y = self._reduced_embeddings[i]
                         recommended_points.append(EmbeddingPoint(
                             x=float(x),
@@ -330,7 +369,7 @@ class RecommenderService:
                 if i < j:
                     edges.append({
                         "source": i,
-                        "target": j,
+                        "target": int(j),
                         "similarity": float(sim_matrix[i][j])
                     })
         
@@ -364,4 +403,3 @@ class RecommenderService:
             "user_edges": user_edges,
             "k_neighbors": k_neighbors
         }
-
