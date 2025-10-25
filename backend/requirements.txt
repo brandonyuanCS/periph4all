@@ -1,0 +1,45 @@
+# FastAPI & Web Framework
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+python-multipart>=0.0.6
+
+# Web Scraping
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+lxml>=5.0.0
+fake-useragent>=1.4.0
+
+# Optional (for JavaScript-heavy sites)
+# selenium>=4.16.0
+# playwright>=1.41.0
+
+# Async & Rate Limiting (optional for now)
+# aiohttp>=3.9.0
+tenacity>=8.2.0
+
+# Data Processing
+pandas>=2.1.0
+pydantic>=2.5.0
+pydantic-settings>=2.0.0
+python-dateutil>=2.8.0
+
+# String Matching
+python-Levenshtein>=0.21.0
+# fuzzywuzzy>=0.18.0  # Not needed if we have Levenshtein
+
+# Utilities
+tqdm>=4.66.0
+python-dotenv>=1.0.0
+
+# ML & Embeddings
+numpy>=1.24.0
+scikit-learn>=1.3.0
+sentence-transformers>=2.2.0
+openai>=1.3.0
+
+# Dimensionality Reduction & Visualization
+umap-learn>=0.5.5
+
+# CORS
+fastapi-cors>=0.0.6
+
