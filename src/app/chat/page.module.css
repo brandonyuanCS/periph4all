@@ -33,6 +33,8 @@
 .messageArea {
   flex: 1;
   padding: 1.5rem;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .messagesContainer {
@@ -93,11 +95,34 @@
 .inputArea {
   border-top: 1px solid hsl(var(--color-border));
   padding: 1rem;
+  flex-shrink: 0;
 }
 
 .inputWrapper {
   display: flex;
   gap: 0.5rem;
+}
+
+.quickSuggestions {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid hsl(var(--color-border));
+}
+
+.suggestionButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.suggestionButton {
+  text-transform: capitalize;
+  transition: all 0.2s;
+}
+
+.suggestionButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px hsl(var(--color-primary) / 0.3);
 }
 
 .sidebarCard {

@@ -55,3 +55,23 @@ async def get_embedding_visualization_with_user(
             detail=f"Visualization with user failed: {str(e)}"
         )
 
+@router.post("/graph-data", response_model=dict)
+async def get_graph_visualization(
+    user_preferences: UserPreferences,
+    k_neighbors: int = Query(5, description="Number of nearest neighbors per node"),
+    recommender: RecommenderService = Depends(get_recommender_service),
+):
+    """
+    Get force graph data with k-nearest neighbor edges
+    """
+    try:
+        graph_data = await recommender.get_graph_data(
+            preferences=user_preferences,
+            k_neighbors=k_neighbors
+        )
+        return graph_data
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Graph data generation failed: {str(e)}"
+        )

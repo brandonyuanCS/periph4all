@@ -37,6 +37,8 @@ class LLMService:
         else:
             return await self._process_chat_fallback(messages, current_preferences)
     
+    # app/services/llm.py
+
     async def _process_chat_with_llm(self, messages: List[ChatMessage],
                                     current_preferences: Optional[UserPreferences]) -> ChatResponse:
         """Process chat using Groq LLM"""
@@ -54,6 +56,10 @@ class LLMService:
             'wireless_preference': "Do you prefer wired or wireless connection?"
         }
         
+        # --- NEW: Variable to hold the question type being asked ---
+        next_question_type = None
+        # -----------------------------------------------------------
+
         try:
             # Build message history
             chat_messages = [{"role": "system", "content": CHAT_SYSTEM_PROMPT}]
@@ -70,6 +76,9 @@ class LLMService:
                     next_question_hint = ""
                     if missing:
                         next_pref = missing[0]
+                        # --- NEW: Set the question type based on missing preference ---
+                        next_question_type = next_pref 
+                        # -------------------------------------------------------------
                         next_question_hint = f"\n\nNEXT QUESTION TO ASK: {question_map.get(next_pref, 'Continue asking about preferences')}"
                     
                     pref_summary = f"ALREADY COLLECTED PREFERENCES (DO NOT change or override these):\n{pref_list}\n\nOnly ask about preferences that are NOT listed above.{next_question_hint}"
@@ -79,13 +88,13 @@ class LLMService:
             for msg in messages:
                 chat_messages.append({"role": msg.role, "content": msg.content})
             
-            # Call Groq API
+            # Call Groq API (omitted for brevity)
             response = self.client.chat.completions.create(
                 model=settings.GROQ_MODEL,
                 messages=chat_messages,
-                temperature=0.5,  # Lower temperature for more consistent behavior
+                temperature=0.5,
                 max_tokens=500,
-                response_format={"type": "json_object"}  # Enforce JSON output
+                response_format={"type": "json_object"}
             )
             
             # Parse response
@@ -97,7 +106,7 @@ class LLMService:
             prefs_dict = parsed.get("preferences", {})
             ready = parsed.get("ready_for_recommendation", False)
             
-            # --- START FIX: Programmatic enforcement of next question ---
+            # --- START FIX: Programmatic enforcement of next question (including next_question_type update) ---
             # Calculate updated 'missing' list based on the new LLM output
             all_prefs = {}
             if current_preferences:
@@ -106,36 +115,38 @@ class LLMService:
             all_prefs.update({k: v for k, v in prefs_dict.items() if v is not None}) 
             
             missing_after_update = [p for p in required_prefs if all_prefs.get(p) is None]
-
+            
+            # Reset next_question_type if we're ready
+            if ready:
+                next_question_type = None
+            
             if not ready and missing_after_update:
                 next_pref = missing_after_update[0]
+                # --- NEW: Update the question type after the most recent preference extraction ---
+                next_question_type = next_pref 
+                # ---------------------------------------------------------------------------------
                 next_question = question_map.get(next_pref)
                 
-                # Enforce question: if we're not ready and the LLM response doesn't contain '?'
+                # Enforce question in message_text (omitted internal logic for brevity)
                 if next_question and '?' not in message_text:
-                    
-                    # Ensure a clean separation
                     separator = " "
                     message_text_stripped = message_text.strip()
                     if message_text_stripped:
                         last_char = message_text_stripped[-1]
                         if last_char not in ['.', '!', '?']:
-                            separator = "! " # Add an exclamation and space for flow
+                            separator = "! "
                         elif last_char == '.':
                             separator = " "
                         
                         message_text = f"{message_text_stripped}{separator}{next_question}"
                     else:
-                        # Fallback if the LLM returned an empty message but provided prefs
                         message_text = next_question
             
             # --- END FIX ---
 
-            # Create UserPreferences object, merging with current preferences
+            # Create UserPreferences object, merging with current preferences (omitted for brevity)
             if current_preferences:
-                # Start with current preferences
                 updated_prefs_dict = current_preferences.model_dump(exclude_none=True)
-                # Update with new values from LLM (only non-null values)
                 for key, value in prefs_dict.items():
                     if value is not None:
                         updated_prefs_dict[key] = value
@@ -146,14 +157,17 @@ class LLMService:
             return ChatResponse(
                 message=ChatMessage(role="assistant", content=message_text),
                 updated_preferences=updated_prefs,
-                ready_for_recommendation=ready
+                ready_for_recommendation=ready,
+                # --- CRITICAL FIX: Pass the determined question type here ---
+                question_type=next_question_type 
+                # -----------------------------------------------------------
             )
             
         except Exception as e:
+            # Error handling (omitted for brevity)
             print(f"Groq API error: {e}")
             import traceback
             traceback.print_exc()
-            # Fallback to rule-based on error
             return await self._process_chat_fallback(messages, current_preferences)
     
     async def _process_chat_fallback(self, messages: List[ChatMessage],
@@ -169,7 +183,8 @@ class LLMService:
                     content=FALLBACK_GREETING
                 ),
                 updated_preferences=current_preferences,
-                ready_for_recommendation=False
+                ready_for_recommendation=False,
+                question_type="hand_size"
             )
         
         last_message = messages[-1].content.lower()
@@ -257,9 +272,28 @@ class LLMService:
             prefs.genre
         ])
         
+        # Determine next question type
+        question_type = None
+        if not ready:
+            if not prefs.hand_size:
+                question_type = "hand_size"
+            elif not prefs.grip_type:
+                question_type = "grip_type"
+            elif not prefs.genre:
+                question_type = "genre"
+            elif not prefs.sensitivity:
+                question_type = "sensitivity"
+            elif not prefs.budget_min and not prefs.budget_max:
+                question_type = "budget"
+            elif not prefs.weight_preference:
+                question_type = "weight_preference"
+            elif prefs.wireless_preference is None:
+                question_type = "wireless_preference"
+        
         return ChatResponse(
             message=ChatMessage(role="assistant", content=response_text),
             updated_preferences=prefs,
-            ready_for_recommendation=ready
+            ready_for_recommendation=ready,
+            question_type=question_type
         )
 

@@ -244,7 +244,7 @@ class RecommenderService:
             mouse_points.append(EmbeddingPoint(
                 x=float(x),
                 y=float(y),
-                mouse_name=mouse_data.get('name', 'Unknown')
+                mouse_name=mouse_data.get('Name', 'Unknown')  # Use 'Name' (capitalized) to match CSV
             ))
         
         return VisualizationResponse(
@@ -280,7 +280,7 @@ class RecommenderService:
             for rec in recommendations:
                 # Find index of this mouse
                 for i, mouse in enumerate(mice):
-                    if mouse.get('name') == rec.mouse.name:
+                    if mouse.get('Name') == rec.mouse.name:  # Use 'Name' (capitalized) to match CSV
                         x, y = self._reduced_embeddings[i]
                         recommended_points.append(EmbeddingPoint(
                             x=float(x),
@@ -292,4 +292,76 @@ class RecommenderService:
             viz_data.recommended_points = recommended_points
         
         return viz_data
+
+
+    async def get_graph_data(self, preferences: UserPreferences, k_neighbors: int = 5) -> dict:
+        """
+        Get graph data with edges based on k-nearest neighbors in embedding space
+
+        Args:
+            preferences: User preferences
+            k_neighbors: Number of nearest neighbors to connect each node to
+
+        Returns:
+            Dict with nodes, edges, and metadata
+        """
+        from sklearn.metrics.pairwise import cosine_similarity as sklearn_cosine_similarity
+
+        # Get visualization data (UMAP coordinates)
+        viz_data = await self.get_visualization_with_user(preferences)
+
+        
+        # Get embeddings for similarity calculations
+        mouse_embeddings = self._get_mouse_embeddings()
+        
+        # Calculate similarity matrix
+        sim_matrix = sklearn_cosine_similarity(mouse_embeddings)
+        
+        # Build edges: connect each mouse to its k most similar mice
+        edges = []
+        mice = self.data_loader.get_mice_list()
+        
+        for i in range(len(sim_matrix)):
+            # Get k most similar (excluding self at index 0)
+            top_k_indices = np.argsort(sim_matrix[i])[::-1][1:k_neighbors+1]
+            
+            for j in top_k_indices:
+                # Only add edge if i < j to avoid duplicates
+                if i < j:
+                    edges.append({
+                        "source": i,
+                        "target": j,
+                        "similarity": float(sim_matrix[i][j])
+                    })
+        
+        # Add edges from user to recommended mice
+        user_edges = []
+        if viz_data.user_point and viz_data.recommended_points:
+            for rec_point in viz_data.recommended_points:
+                # Find index of recommended mouse
+                mouse_idx = next(
+                    (i for i, m in enumerate(mice) if m.get('Name') == rec_point.mouse_name),
+                    None
+                )
+                if mouse_idx is not None:
+                    # Calculate similarity between user embedding and this mouse
+                    user_embedding = self.embedding_service.generate_user_embedding(preferences)
+                    mouse_embedding = mouse_embeddings[mouse_idx]
+                    similarity = sklearn_cosine_similarity(
+                        user_embedding.reshape(1, -1), 
+                        mouse_embedding.reshape(1, -1)
+                    )[0][0]
+                    
+                    user_edges.append({
+                        "source": "user",
+                        "target": mouse_idx,
+                        "similarity": float(similarity)
+                    })
+        
+        return {
+            "visualization": viz_data.dict(),
+            "edges": edges,
+            "user_edges": user_edges,
+            "k_neighbors": k_neighbors
+        }
 

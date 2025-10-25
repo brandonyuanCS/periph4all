@@ -89,6 +89,7 @@ class ChatResponse(BaseModel):
     message: ChatMessage
     updated_preferences: Optional[UserPreferences] = None
     ready_for_recommendation: bool = False
+    question_type: Optional[str] = Field(None, description="Type of question being asked: hand_size, grip_type, genre, sensitivity, budget, weight_preference, wireless_preference")
 
 
 # Visualization Models
