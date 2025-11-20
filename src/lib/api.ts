@@ -2,7 +2,12 @@
  * API client for periph4all backend
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_SERVER_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+// Debug: Log the API URL being used (only in development)
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+  console.log('API Base URL:', API_BASE_URL);
+}
 
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
